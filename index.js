@@ -10,6 +10,11 @@ const deepAssign = require('deep-assign');
 const log = require('loglevel');
 const unmirror = require('chrome-unmirror');
 
+const path = require('path');
+const promisify = require('util').promisify;
+const writeFile = promisify(require('fs').writeFile);
+const mkdir = promisify(require('fs').mkdir);
+
 process.on('unhandledRejection', error => {
   // this should always output to console.error, regardless of loglevel
   console.error('Promise Rejection: ', error);
@@ -21,6 +26,12 @@ class MochaChrome {
       chromeFlags: [],
       loadTimeout: 1000,
       logLevel: 'error',
+      screenshots: {
+        pass: false,
+        fail: false,
+        format: 'png',
+        outputDirectory: path.join(process.cwd(), 'mocha-chrome-screenshots'),
+      },
       mocha: {
         reporter: 'spec',
         ui: 'bdd',
@@ -78,9 +89,40 @@ class MochaChrome {
       this.loadError = true;
     });
 
+    bus.on('testPass', async testName => {
+      if (options.screenshots.pass) {
+        const { outputDirectory, format } = options.screenshots;
+        const filename = `pass-${testName.replace(/\s/, '-')}.${format}`;
+        await this.takeScreenshot(filename);
+      }
+    });
+
+    bus.on('testFail', async testName => {
+      if (options.screenshots.fail) {
+        const { outputDirectory, format } = options.screenshots;
+        const filename = `fail-${testName.replace(/\s/, '-')}.${format}`;
+        await this.takeScreenshot(filename);
+      }
+    });
+
     this.bus = bus;
     this.options = options;
     this.loadError = false;
+  }
+
+  async takeScreenshot (filename) {
+    const { outputDirectory, format } = this.options.screenshots;
+    const Page = this.client.Page;
+    const outfile = path.join(outputDirectory, filename);
+
+    try {
+      await mkdir(outputDirectory);
+    }
+    catch (e) {}
+
+    const { data } = await Page.captureScreenshot();
+    const img = Buffer.from(data, 'base64');
+    return writeFile(outfile, img, { encoding: 'binary' });
   }
 
   async connect () {
@@ -157,8 +199,6 @@ class MochaChrome {
 
     this.bus.emit('exit', 1);
   }
-
 }
-
 
 module.exports = MochaChrome;
