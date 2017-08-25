@@ -19,6 +19,19 @@
       };
 
       mocha.setup(mochaOptions);
+
+      mocha.suite.afterEach('mocha-chrome state reporter', function () {
+        const state = this.currentTest.state;
+        const title = this.currentTest.title;
+
+        if (state && state === 'failed') {
+          window._eventbus.emit('testFail', title);
+        }
+
+        if (state && state === 'passed') {
+          window._eventbus.emit('testPass', title);
+        }
+      });
     },
     configurable: true
   });
