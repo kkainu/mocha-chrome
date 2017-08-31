@@ -60,9 +60,16 @@ const mochaDefaults = {
   reporter: flags.reporter || 'spec',
   useColors: !flags.colors
 };
+const screenshotsDefaults = {
+  pass: false,
+  fail: false,
+  format: 'png',
+  outputDirectory: path.join(process.cwd(), 'mocha-chrome-screenshots')
+};
 const mocha = deepAssign(mochaDefaults, JSON.parse(flags.mocha || '{}'));
+const screenshots = deepAssign(screenshotsDefaults, JSON.parse(flags.screenshots || {}));
 const logLevel = flags.logLevel || 'error';
-const options = { url, logLevel, mocha };
+const options = { url, logLevel, mocha, screenshots };
 const runner = new MochaChrome(options);
 
 runner.on('ended', stats => {
